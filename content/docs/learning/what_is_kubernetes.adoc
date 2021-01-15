@@ -12,7 +12,7 @@ Kubernetes を使用すると、コンテナ化されたアプリケーション
 つまり、Linux コンテナを実行しているホストをまとめてクラスタ化できるということです。
 Kubernetes はこれらのクラスタを容易に、そして効率的に管理するために役立ちます。
 
-## https://deeeet.com/writing/2018/12/13/how-kubernetes-change-our-way-of-automation/[Kubernetesがいかに自動化の考え方を変えたのか？]
+## https://deeeet.com/writing/2018/12/13/how-kubernetes-change-our-way-of-automation/[Kubernetesがいかに自動化の考え方を変えたのか?]
 
 Kubernetesの大きな特徴のひとつは「Declarative Configuration」です。
 KubernetesユーザはKubernetes APIに対してあるべきDesiredな状態を宣言（Declare）しKubernetesはその状態になるように「自律的に」動き続けます。
@@ -63,12 +63,12 @@ KubernetesのAPIには、System Componentしか使えないという口はあり
 
 Kubernetes上のアプリケーションの運用を自動化するために、
 バッチを動かすのでも、コマンドを人間が実行するのでもなく、
-Kubernetesのコア機能である「Reconciliation Loop」で解決できないか？
+Kubernetesのコア機能である「Reconciliation Loop」で解決できないか?
 そのような考えに至ったのは自明の理でしょう。
 
 こうして、CoreOS(のちにRed Hatが買収)によって提案されたのが **Kubernetes Operator** です。
 
-## Kubernetes Operatorとは？
+## Kubernetes Operatorとは?
 
 Kubernetes Operatorとは、Kubernetesアプリケーションをパッケージ化、デプロイ、管理する方法です。
 超ざっくり取り分けると、Operatorは次の五つのリソースから成り立っています。

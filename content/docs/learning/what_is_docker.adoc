@@ -31,10 +31,10 @@ Dockerとは、Docker社によって2013年から開発されているコンテ�
 
 Dockerの革新的だった要素の一つに、Dockerfileを使ってインフラストラクチャをDeclarative(宣言的)に設定することができたことが挙げられます。
 
-宣言的とは何でしょうか？対義語であるImperative(命令的、指示的)と比較した例として
+宣言的とは何でしょうか?対義語であるImperative(命令的、指示的)と比較した例として
 車のシフトドライバーを使った説明がわかりやすかったので引用します。
 
-[quote,宣言的？ Declarative?どういうこと？, https://qiita.com/Hiroyuki_OSAKI/items/f3f88ae535550e95389d]
+[quote,宣言的? Declarative?どういうこと?, https://qiita.com/Hiroyuki_OSAKI/items/f3f88ae535550e95389d]
 ____
 {{< tweet 1268892357027663873 >}}
 左はオートマティック、右はマニュアルのギアです。特にこのインターフェースだけを見てください。

@@ -1,0 +1,109 @@
+---
+title: Kubernetesとは?
+weight: 40
+---
+
+++++
+<h1>Kubernetesとは?</h1>
+++++
+
+Kubernetes(略してk8s=ケイツとも言われます)は、コンテナの操作を**自動化する**オープンソース・プラットフォームのことです。
+Kubernetes を使用すると、コンテナ化されたアプリケーションのデプロイとスケーリングに伴う多くの手動プロセスをなくすことができます。
+つまり、Linux コンテナを実行しているホストをまとめてクラスタ化できるということです。
+Kubernetes はこれらのクラスタを容易に、そして効率的に管理するために役立ちます。
+
+## https://deeeet.com/writing/2018/12/13/how-kubernetes-change-our-way-of-automation/[Kubernetesがいかに自動化の考え方を変えたのか？]
+
+Kubernetesの大きな特徴のひとつは「Declarative Configuration」です。
+KubernetesユーザはKubernetes APIに対してあるべきDesiredな状態を宣言（Declare）しKubernetesはその状態になるように「自律的に」動き続けます。
+例えばユーザが「Podを5つ動かす」という状態を宣言するとKubernetesはそれを受け「Podが5つ動いている状態」を維持するように動きます。
+
+これを実現しているのがReconciliation loopです。Kubernetesではコンテナリソースを管理するために大量のControllerと呼ばれるプログラムが動いており、それぞれが独立したReconciliation loopを実行しています。
+個々のControllerはシステムの一部の小さな機能を担っており他のシステムの状態に関しては感知しません。それぞれがそれぞれの問題のみを解決します。
+UNIX哲学的に作られた独立したControllerの集合こそがKubernetesです。
+
+[NOTE]
+====
+ここで言及されているUNIX哲学とは、UNIXというOSの開発経験から培われたプラクティスともいえる The UNIX pholosophyのことです。
+
+[quote, UNIXという考え方, https://gist.github.com/koudaiii/82e4f8869705e5be065f]
+____
+1つのプログラムには1つのことをうまくやらせる
+____
+
+この仕組みは、TV番組ピタゴラスイッチに出てくる装置とよく似ています。
+一つ一つのプログラム(Controller)は単純なことしかできないのに、うまくプログラム同士の歯車がかみ合うことで
+Kubernetesという巨大なシステムを実現しています。
+====
+
+このReconciliation loopは以下の4つを繰り返しているだけです。
+
+* Desired stateを知る
+* 現在のstateをObserveする
+* Desired stateとObserveされたstateの差を見つける
+* Desiredな状態になるような処理を実行する
+
+[quote, Managing Kubernetes]
+----
+{{< figure src="/images/k8s_reconcile.png" >}}
+----
+
+この概念を実際にKubernetesで使用しているリソースに当てはめると次の通りになります。
+
+. マニフェストファイルと呼ばれる、アプリケーションのあるべき状態(Desiredな状態)を定義した設定ファイルを用意する
+{{< figure src="/images/CNC201-2-6.png" >}}
+
+. マニフェストファイルで定義したインフラ構成に合わせてKubernetesのSystem Controllerが実際のリソースを調整する
+{{< figure src="/images/CNC201-2-7.png" >}}
+
+Kubernetesで特徴的なのはそのSystemを構成するControllerもその上で動くApplicationと同様のAPIを使っていることです。
+KubernetesのAPIには、System Componentしか使えないという口はありません。
+
+これがもたらすのはSystem Controllerと同じように自分たちで自分たち専用のControlerを書いていけるということです。
+
+Kubernetes上のアプリケーションの運用を自動化するために、
+バッチを動かすのでも、コマンドを人間が実行するのでもなく、
+Kubernetesのコア機能である「Reconciliation Loop」で解決できないか？
+そのような考えに至ったのは自明の理でしょう。
+
+こうして、CoreOS(のちにRed Hatが買収)によって提案されたのが **Kubernetes Operator** です。
+
+## Kubernetes Operatorとは？
+
+Kubernetes Operatorとは、Kubernetesアプリケーションをパッケージ化、デプロイ、管理する方法です。
+超ざっくり取り分けると、Operatorは次の五つのリソースから成り立っています。
+
+. Kubernetesのマニフェストファイル
+Operatorで運用を自動化したいKubernetesのアプリケーションに関する定義ファイルです。
+
+. CRD(Custom Resource Definition)
+Kubernetesのアプリケーションに関する定義ファイルであるマニフェストファイルと同じような形式で「Operatorのあるべき状態」を定義することができます。
+
+. Custom Controller
+KubernetesのSystem Controllerと同じようにKubernetesのAPIを使ってCRDに書き込まれた定義値を元に、
+「Reconciliation Loop」により、アプリケーションを調整する機能を持ちます。
+
+. Helm
+Helmとは、Kubernetes固有のアプリケーションコンテナに関するパッケージ管理ツールです。
+Operatorでは、CRDやCustom Controller、Kubernetesのマニフェストファイルに紐づくアプリケーションコンテナを簡単にデプロイできるようにするために使用しています。
+
+. Ansible
+IaCツールです。
+
+Operatorを作るために、この五つのリソースが必ず必要になるわけではありません。
+Operatorでどこまでアプリケーションの運用を自動化したいのか、その要件により必要なリソースが決まります。
+
+どこまで自動化できたのかチェック表にあたる
+https://sdk.operatorframework.io/docs/advanced-topics/operator-capabilities/operator-capabilities/[Operator Capability Levels]という
+ものがRed Hatにより公開されています。
+
+{{< figure src="/images/operator-capability-level.png" >}}
+
+例えば、Level1である、Kubernetes上への構成のみを行うBasic Installの場合、 HELMへの対応とOperatorを管理するOperator Lifecycle Managerへの対応だけで
+Operatorを開発することができます。
+
+このほか、https://www.openshift.com/blog/kubernetes-operators-best-practices[Kubernetes Operatorを開発するためのベストプラクティス]などが概要把握の参考資料になります。
+
+## 参考文献
+* https://www.redhat.com/ja/topics/containers/what-is-kubernetes
+* https://deeeet.com/writing/2018/12/13/how-kubernetes-change-our-way-of-automation/

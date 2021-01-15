@@ -1,0 +1,14 @@
+<section class="card">
+    {{ $head_img := .Resources.GetMatch "images/*head.png" }}
+    {{ if $head_img }}
+    {{/* `*head.png` というファイル名の画像が記事に関連付けられている場合 */}}
+    {{ $small := $head_img.Fit "360x270 q80" }}
+    <img src="{{ $small.RelPermalink }}" class="card-img-top">
+    {{ else }}
+    <img src="/images/default_thumbnail.png" class="card-img-top">
+    {{ end }}
+    <div class="card-body">
+        <h1 class="card-title">{{ .Title }}</h1>
+        <div>{{ .Summary }}</div>
+    </div>
+</section>

@@ -1,0 +1,205 @@
+---
+title: Dockerとは?
+weight: 32
+---
+
+++++
+<h1>Dockerとは?</h1>
+++++
+
+Dockerとは、Docker社によって2013年から開発されているコンテナ型の仮想環境を作成、配布、実行するためのプラットフォームです。
+プラットフォームは下記の図のような基本機能を提供しています。
+
+{{< figure src="/images/dockerimageinternalv10-150127224053-conversion-gate02-7.png" class="center" >}}
+
+1. Dockerイメージを自動作成
+  - Dockerイメージとは超ざっくり言えば、プログラムが動いているディレクトリそのものです。
+    windowsで例えれば `C:\Program Files` の下のフォルダです。
+  - 技術的に説明すると、chrootで区切ったディレクトリにプログラムのバイナリと環境変数などの情報を加えて
+    tarファイルでパッケージしたのがコンテナイメージとなります。
+2. Dockerイメージを保存・公開
+　- Docker社は、Dockerイメージを保存するための専用の仕組みとしてコンテナレジストリを考案しました。
+  - コンテナレジストリとはリポジトリ内のコンテナイメージをホスティング、バージョン管理、配布するツールです。
+　- コンテナイメージをググるとDockerHubというウェブサイトがよくヒットします。
+    DockerHubとはDocker社が運営しているコンテナレジストリのマネージドサービスです。
+3. Dockerサーバーにイメージを配布・実行
+  - `docker pull && docker run` コマンドを実行することで、
+     コンテナレジストリからコンテナイメージ(tarファイル)をダウンロードし、
+     コンテナとして実行することができます。
+
+## Declarative(宣言的)、あるいはIaC(Infrastructure as a Code)
+
+Dockerの革新的だった要素の一つに、Dockerfileを使ってインフラストラクチャをDeclarative(宣言的)に設定することができたことが挙げられます。
+
+宣言的とは何でしょうか？対義語であるImperative(命令的、指示的)と比較した例として
+車のシフトドライバーを使った説明がわかりやすかったので引用します。
+
+[quote,宣言的？ Declarative?どういうこと？, https://qiita.com/Hiroyuki_OSAKI/items/f3f88ae535550e95389d]
+____
+{{< tweet 1268892357027663873 >}}
+左はオートマティック、右はマニュアルのギアです。特にこのインターフェースだけを見てください。
+ツイートでは、左が宣言的、右が命令的であると指摘しています。私もこの意見に賛成です。
+____
+
+車のギア変更をしたいときに、目的に合わしていい感じにやってね!!というのが宣言的、
+自分であれこれ命令しながら調整したいのが命令的だと言えます。
+
+例えば、Dockerコンテナイメージが動くときに使用するCPUの割り当て期間とメモリ量を制限したいとしましょう。
+
+従来の命令的な書き方では、コンテナイメージを実行するたびに下記のコマンドを実行する必要がありました。
+
+[source, shell]
+----
+# コンテナ化したいプログラムのプロセスID(PID)を調べる
+$ ps -aux
+# 対象のプロセスをsandboxという名前のcgroupに移動する
+$ cgcreate -g cpu,memory:/sandbox <PID>
+# 総CPUの5%を上限とするように制限をかける
+cgset -r cpu.cfs_period_us=100000 -r cpu.cfs_quota_us=$[ 5000 * $(getconf _NPROCESSORS_ONLN) ] sandbox
+# メモリ量のうち、50Mを上限とするように制限をかける
+cgset -r memory.limit_in_bytes=50M sandbox
+----
+
+Docker ComposeというDockerの拡張機能では、下記の例にあるようなComposeファイルという定義ファイルを用意することで同じことを実現できます。
+
+[source, yaml]
+----
+version: "3"
+services:
+  service1:
+    image: example
+    command: ["/sandbox_process"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.05' <1>
+          memory: 50M <2>
+----
+<1> CPUの5%を上限とします
+<2> メモリ使用量は50MBを上限とします
+
+cgroup-toolsのコマンドを実行する場合と比較すると、制限をかけたいという目的が非常に分かりやすくなったのではないでしょうか。これが宣言的な書き方の強みです。
+このようにコンピューターも人も解読可能な定義ファイルを介してマシンリソースを管理および設定する仕組みを**Infrastructure as Code(IaC)**と言います。
+
+[NOTE]
+====
+`.env` のような環境変数ファイル、あるいはパラメーターシートを書くのとそんなに変わらないじゃないかと思われる方もいらっしゃると思いますが、
+宣言的な定義ファイルとは、環境変数ファイル、パラメーターシートを含意する言葉だと考えてください。
+
+実際、環境変数を定義ファイルで設定することも可能です。
+
+[source,yaml]
+----
+version: "3"
+services:
+  node:
+    image: example
+    command: ["/sandbox_process"]
+    environment:
+        - DEBUG=1 <1>
+----
+<1> 環境変数DEBUGに1を代入します
+
+ですが、"宣言的"とあえて評した場合、 そこには **あるべき姿を定義する** という意味合いがあります。
+これはただのパラメーターシートではあまり意識されることのない概念でしょう。
+
+あるべき姿を定義するとはどういうことなのか。
+Kubernetesのコンセプトである「リコンサイルループ」を説明する際に、改めて触れたいと思います。
+====
+
+## DockerfileとComposeファイル
+
+Dockerコンテナの定義ファイルはざっくり分けると二種類あります。
+
+### Dockerfile
+コンテナイメージを定義するためのファイルです。
+アプリケーションを動かすための環境を定義します。
+Dockerfileの一例を示します。
+[source,docker]
+----
+FROM scratch <1>
+ENV CHAR="Docker" <2>
+COPY hello / <3>
+CMD ["/hello", $CHAR] <4>
+----
+<1> 空のコンテナイメージを元に作成することを示しています
+<2> 環境変数CHARを定義し、Dockerという文字列を代入しています
+<3> helloというプログラムを `/` ディレクトリ、つまりコンテナ内のルートディレクトリにコピーします
+<4> helloプログラムを実行して、環境変数CHARを引数として渡します
+
+このDockerfileにはCPUやメモリなどのシステムリソースの制限、ストレージやネットワーク環境などの環境情報が入ってないことに注意してください。
+これらの情報はコンテナの実行時に `docker run` コマンドの引数として渡すか、あるいは次のComposeファイルを使って定義します。
+
+### Composeファイル
+サービス（services)、ネットワーク（networks）、ボリューム（volumes）を定義するためのファイルです。
+複数のコンテナアプリケーションを設定するために使用する
+YAMLと呼ばれる形式で書かれます。Composeファイルの一例を示します。
+
+[source,yaml]
+----
+services:
+  frontend:
+    image: awesome/webapp <1>
+    ports:
+      - "443:8043"
+    networks: <2>
+      - front-tier
+      - back-tier
+    depends_on:
+      - backend
+    env_file:
+    - ./a.env
+
+  backend:
+    image: awesome/database <1>
+    volumes: <2>
+      - db-data:/etc/data
+    networks: <2>
+      - back-tier
+    environment:
+      - RACK_ENV=development
+
+volumes:
+  db-data:
+    driver: flocker
+    driver_opts:
+      size: "10GiB"
+
+networks:
+  # The presence of these objects is sufficient to define them
+  front-tier: {}
+  back-tier: {}
+----
+<1> 使用するコンテナイメージを指定します
+<2> コンテナから、コンテナの外にあるリソースの、ストレージやネットワークにアクセスするための情報を定義します
+
+このComposeファイルをdocker-compose.yamlという名前で保存し、下記のコマンドを実行することでコンテナを実行することができます。
+[source,shell]
+----
+$ docker-compose up -d
+----
+
+## 2013年に登場したDockerは開発環境としては十分だったが...
+
+アプリケーションを商用環境で動かしたい場合、ある程度のビジネス規模になると、負荷分散させて可用性を担保するために複数サーバーに分散配置することが普通です。
+
+そのようなシステム要件に、実はDockerはマッチしていません。 +
+先ほど紹介したdocker-composeは複数のコンテナを同時に起動することはできますが、一つのサーバー上でしか動けません。 +
+
+複数のサーバーに分散配置されたコンテナを集中管理し、一つのシステムとして動かせるような自動化の仕組みが欲しい。
+そう、まるでオーケストラの指揮者のように...
+
+{{< figure src="https://3.bp.blogspot.com/-_DJNY4CG9lQ/U4caW5gwBJI/AAAAAAAAg48/JXmxiQ_qL4w/s800/music_orchestra.png" height="320px" >}}
+
+こうしてコンテナ・オーケストレーションツールであるKubernetesは生まれました。
+
+Dockerコンテナとその他のコンテナ技術のように、コンテナオーケストレーションに関しても実はKubernetes以外にも色々あります。
+(HashiCorp社のNomad, Kubernetesとの競争に敗れて開発が止まったDocker Swarm, Apple社でも昔使われていたApache Mesos等)
+しかし、現在ではKubernetesがデファクトスタンダードであり、ほぼ一極化しているので、Kubernetesに焦点を当てます。
+
+Kubernetesの仕組み、そして設計を支えるコアコンセプトは次の章より詳しく説明します。
+
+## 参考資料
+* https://www2.slideshare.net/enakai/docker-43975886
+* https://files.speakerdeck.com/presentations/1291977097b74e51a96276ca8e965b01/Basis_of_LinuxCT.pdf
+* https://www.sbcloud.co.jp/entry/what-is-hypervisor
